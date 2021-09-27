@@ -9,40 +9,35 @@
 # -- --------------------------------------------------------------------------------------------------- -- #
 """
 
-import pandas as pd
 import data as dt
+import numpy as np
+import functions as fn
+import matplotlib.pyplot as plt
+plt.rcParams.update({'figure.figsize': (9, 7), 'figure.dpi': 120})
 
-# -- TEST 1 : 
-# verify that the script is being read
-print(dt.dict_test)
 
-# -- TEST 2 :
-# verify that installed pandas module works correctly
-df_dict_test = pd.DataFrame(dt.dict_test, index=[0, 1])
-print(df_dict_test)
+# Download adjust close of Bitcoin from yahoo
+btc = dt.get_adj_close("BTC-USD", start_date="2019-09-27", end_date="2021-09-27")
+#print(btc)
 
-# -- TEST 3 :
-# verify you can use plotly and visualize plots in jupyter notebook
+# Calcular las diferencias de la serie de tiempo
+diff1 = btc["Adj Close"].diff()
+diff2 = diff1.diff()
 
-import chart_studio.plotly as py   # various tools (jupyter offline print)
-import plotly.graph_objects as go  # plotting engine
 
-# example data
-df = pd.DataFrame({'column_a': [1, 2, 3, 4, 5], 'column_b': [1, 2, 3, 4, 5]})
-# basic plotly plot
-data = [go.Bar(x=df['column_a'], y=df['column_b'])]
-# instruction to view it inside jupyter
-py.iplot(data, filename='jupyter-basic_bar')
-# (alternatively) instruction to view it in web app of plotly
-# py.plot(data)
+# Realizar la prueba Dickey-Fuller a la serie de tiempo
+Di_Fu0 = fn.prueba_DickeyFuller(btc)
+Di_Fu1 = fn.prueba_DickeyFuller(diff1)
 
-# -- TEST 4 :
-# verify you can use plotly and visualize plots in web browser locally
+# Diferenciacion y autocorrelacion
+#autocorr = fn.autocorrelacion(btc, diff1, diff2)
 
-import plotly.io as pio            # to define input-output of plots
-pio.renderers.default = "browser"  # to render the plot locally in your default web browser
+# Resumen de diferenciaciones de la serie de tiempo
+resumen = fn.resumen(Di_Fu0, Di_Fu1)
+#print(resumen)
 
-# basic plotly plot
-plot_data = go.Figure(go.Bar(x=df['column_a'], y=df['column_b']))
-# instruction to view it in specified render (in this case browser)
-plot_data.show()
+# Encontrar el parametro "p"
+#AR = fn.AR(diff2)
+
+# Encontrar el parametro "q"
+MA = fn.MA(diff1)

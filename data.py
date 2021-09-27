@@ -9,4 +9,14 @@
 # -- --------------------------------------------------------------------------------------------------- -- #
 """
 
-dict_test = {'key_a': 'a', 'key_b': 'b'}
+import pandas as pd
+import yfinance as yf
+
+
+def get_adj_close(tickers: str, start_date: str, end_date: str):
+    closes = yf.download(tickers,
+                         start=start_date,
+                         end=end_date,
+                         progress=False)['Adj Close'].reset_index(drop=True)
+
+    return pd.DataFrame(closes)
