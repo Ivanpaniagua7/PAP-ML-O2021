@@ -28,3 +28,9 @@
 
 
 #%% Edzna
+
+
+a = 1
+
+
+hola = "Ivan"
