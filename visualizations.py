@@ -10,9 +10,11 @@
 """
 
 #%% Ivan
-b=2+5
-olk=56
-adios="elefante"
+
+
+
+
+
 
 
 
@@ -22,16 +24,8 @@ adios="elefante"
 #%% Edzna
 
 
-a = 1
-
-
-esto = "es prueba"
-
-
-
-b = 58
 
 
 
 
-adios = "profe"
+

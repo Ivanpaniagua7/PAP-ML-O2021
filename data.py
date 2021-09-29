@@ -8,12 +8,12 @@
 # -- repository: YOUR REPOSITORY URL                                                                     -- #
 # -- --------------------------------------------------------------------------------------------------- -- #
 """
+
+
+#%% Ivan
 import pandas_datareader.data as web
 
-<<<<<<< HEAD
-dict_test = {'key_a': 'a', 'key_b': 'b'}
-
-#%% Función para descargar precios de cierre ajustados:
+# Función para descargar precios de cierre ajustados:
 def get_adj_closes(tickers, start_date=None, end_date=None):
     # Fecha inicio por defecto (start_date='2010-01-01') y fecha fin por defecto (end_date=today)
     # Descargamos DataFrame con todos los datos
@@ -24,11 +24,14 @@ def get_adj_closes(tickers, start_date=None, end_date=None):
     closes.sort_index(inplace=True)
     return closes
 
-#%% 
 Closes=get_adj_closes(tickers=['BTC-USD'], start_date=("2020,09,01"))
 
 
-=======
+
+
+
+
+#%% Edzna
 import pandas as pd
 import yfinance as yf
 
@@ -40,4 +43,4 @@ def get_adj_close(tickers: str, start_date: str, end_date: str):
                          progress=False)['Adj Close'].reset_index(drop=True)
 
     return pd.DataFrame(closes)
->>>>>>> Edzna
+
