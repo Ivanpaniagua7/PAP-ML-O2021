@@ -32,3 +32,9 @@ si=8
 
 
 #%% Edzna
+
+
+a = 1
+
+
+hola = "Ivan"
