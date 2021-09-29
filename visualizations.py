@@ -11,20 +11,8 @@
 
 #%% Ivan
 b=2+5
-
+olk=56
 adios="elefante"
-
-
-
-
-
-si=8
-
-
-
-
-
-
 
 
 
