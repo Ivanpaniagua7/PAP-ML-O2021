@@ -10,11 +10,15 @@
 """
 
 #%% Ivan
+b=2+5
+
+adios="elefante"
 
 
 
 
 
+si=8
 
 
 
