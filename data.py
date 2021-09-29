@@ -10,6 +10,7 @@
 """
 import pandas_datareader.data as web
 
+<<<<<<< HEAD
 dict_test = {'key_a': 'a', 'key_b': 'b'}
 
 #%% Función para descargar precios de cierre ajustados:
@@ -27,3 +28,16 @@ def get_adj_closes(tickers, start_date=None, end_date=None):
 Closes=get_adj_closes(tickers=['BTC-USD'], start_date=("2020,09,01"))
 
 
+=======
+import pandas as pd
+import yfinance as yf
+
+
+def get_adj_close(tickers: str, start_date: str, end_date: str):
+    closes = yf.download(tickers,
+                         start=start_date,
+                         end=end_date,
+                         progress=False)['Adj Close'].reset_index(drop=True)
+
+    return pd.DataFrame(closes)
+>>>>>>> Edzna
