@@ -7,100 +7,84 @@
 # -- repository: YOUR REPOSITORY URL                                                                     -- #
 # -- --------------------------------------------------------------------------------------------------- -- #
 """
+import numpy as np
+import pandas as pd
+import yfinance as yf
+import datetime
+from scipy import stats
+import statsmodels.api as sm
+import matplotlib.pyplot as plt
+from statsmodels.tsa.stattools import adfuller
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+from statsmodels.tools.eval_measures import mse
+#from statsmodels.tsa.stattools import breakvar_heteroskedasticity_test
+plt.rcParams.update({'figure.figsize': (9, 7), 'figure.dpi': 120})
+
 #%% Ivan
 
 
-
-
-
-
-
-
-
-
 #%% Edzna
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-from statsmodels.tsa.stattools import adfuller
+
+def serie_weekdays(btc):
+    fecha = pd.DataFrame(btc.index)
+    fecha = pd.DataFrame(pd.to_datetime(fecha["Date"]).dt.weekday)
+    btc = btc.reset_index(drop=True)
+    btc["Weekday"] = fecha
+    days = btc.groupby("Weekday")
+    df = pd.DataFrame()
+    df["Lunes"] = days.get_group(0)["Close"].reset_index(drop=True)
+    df["Martes"] = days.get_group(1)["Close"].reset_index(drop=True)
+    df["Miércoles"] = days.get_group(2)["Close"].reset_index(drop=True)
+    df["Jueves"] = days.get_group(3)["Close"].reset_index(drop=True)
+    df["Viernes"] = days.get_group(4)["Close"].reset_index(drop=True)
+    df["Sábado"] = days.get_group(5)["Close"].reset_index(drop=True)
+    df["Domingo"] = days.get_group(6)["Close"].reset_index(drop=True)
+
+    return df
 
 
-def prueba_DickeyFuller(df: pd.DataFrame):
-    result = adfuller(df.dropna())
-    # result= df.diff()
-    # Primero verificamos si la serie está estacionaria usando la prueba Augmented Dickey Fuller
-    print('ADF Statistic: %f' % result[0])
-    # si el valor p de la prueba es menor que el nivel de significancia (0.05), entonces rechaza la hipótesis nula
-    # e infiere que la serie de tiempo es de hecho estacionaria.
-    print('p-value: %f' % result[1])  # si el valor p de la prueba es menor que el nivel de significancia (0.05),
-    # entonces rechaza la hipótesis nula e infiere que la serie de tiempo es de hecho estacionaria.
-    if result[1] > 0.05:
-        print('(', result[1], '> 0.05 )',
-              'Dado que el valor P es mayor que el nivel de significancia, la serie NO es estacionaria, '
-              'por lo que debemos de diferenciar la serie.')
-    else:
-        print('(', result[1], '< 0.05 )',
-              'Dado que el valor es menor que el nivel de significancia (0.05), no es necesario diferenciar la serie')
-    return result
+def conteo_calculos(bitcoin):
+    btc = bitcoin.copy()
+    df = pd.DataFrame()
+    df['CO'] = (btc['Close'] - btc['Open'])
+    df['CO pips'] = df['CO'] * 0.01
+    df['HO'] = (btc['High'] - btc['Open'])
+    df['HO pips'] = df['HO'] * 0.01
+    df['OL'] = (btc['Open'] - btc['Low'])
+    df['OL pips'] = df['OL'] * 0.01
+    df['HL'] = (btc['High'] - btc['Low'])
+    df['HL pips'] = df['HL'] * 0.01
 
-def autocorrelacion(df, diff1, diff2):
-    # Original Series
-    fig, axes = plt.subplots(3, 2, sharex=True)
-    axes[0, 0].plot(df["Adj Close"]);
-    axes[0, 0].set_title('Original Series')
-    plot_acf(df["Adj Close"], ax=axes[0, 1])
-
-    # 1st Differencing
-    axes[1, 0].plot(diff1);
-    axes[1, 0].set_title('1st Order Differencing')
-    plot_acf(diff1.dropna(), ax=axes[1, 1])
-
-    # 2nd Differencing
-    axes[2, 0].plot(diff2);
-    axes[2, 0].set_title('2nd Order Differencing')
-    plot_acf(diff2.dropna(), ax=axes[2, 1])
-
-    plt.show()
+    return df
 
 
-def resumen(Di_Fu0, Di_Fu1):
-    datos_diferencia = list(zip(Di_Fu0, Di_Fu1))
-    df_diferencias = pd.DataFrame(datos_diferencia)
-    # Nombre de columnas
-    df_diferencias.set_axis(['0 diferencia', '1ra diferencia'],
-                            axis='columns', inplace=True)
-    # Nombre de filas
-    df_diferencias.rename(index={0: 'ADF estadístico ó prueba aumentada de Dickey-Fulle:',
-                                 1: 'P-Value:',
-                                 2: 'Rezagos usados:',
-                                 3: 'Número de observaciones utilizadas para la regresión ADF '
-                                    'y el cálculo de los valores críticos:',
-                                 4: 'Valores críticos. Basado en MacKinnon:',
-                                 5: 'El criterio de información maximizada si el autolag no es Ninguno:'},
-                          inplace=True)
+def pruebaDickeyFuller(btc):
+    dftest = adfuller(btc)
+    dfoutput = pd.Series(dftest[0:4], index=['Test Statistic', 'p-value', '#Lags Used', 'Number of Observations Used'])
+    for key, value in dftest[4].items():
+        dfoutput['Critical Value (%s)' % key] = value
 
-    return df_diferencias
+    return dfoutput
 
-def AR(df):
-    # PACF plot of 1st differenced series -----MODIFIQUE LOS DATOS DE LA ARIMA-----
-    plt.rcParams.update({'figure.figsize': (9, 3), 'figure.dpi': 120})
 
-    fig, axes = plt.subplots(1, 2, sharex=True)
-    axes[0].plot(df);
-    axes[0].set_title('2nd Differencing')
-    axes[1].set(xlim=(0, 20), ylim=(0, 1))
-    plot_pacf(df.dropna(), ax=axes[1])
+def model_fit(btc, p, d, q):
+    model = SARIMAX(btc.reset_index()["Close"], order=(p, d, q), seasonal_order=(0, 0, 0, 0))
+    modelo_fit = model.fit()
 
-    plt.show()
+    return modelo_fit
 
-def MA(df):
-    plt.rcParams.update({'figure.figsize': (9, 3), 'figure.dpi': 120})
-    # Import data
-    fig, axes = plt.subplots(1, 2, sharex=True)
-    axes[0].plot(df);
-    axes[0].set_title('2nd Differencing')
-    axes[1].set(xlim=(0, 15), ylim=(0, 1))
-    plot_acf(df.dropna(), ax=axes[1])
 
-    plt.show()
+def PredictTrain(data, rezagos, p, I, q):
+    data = data.reset_index()
+    PrediccionTrain = pd.DataFrame(columns=["Predicción"])
+    for i in range(rezagos, len(data)-1):
+        try:
+            model = SARIMAX(pd.DataFrame(data["Close"][:i]), order=(p,I,q), seasonal_order=(0,0,0,0))
+            model_fit = model.fit()
+            nextday=i+1
+            forecast = list(model_fit.predict(start=nextday,end=nextday,dynamic=True))
+            PrediccionTrain.loc[data.loc[i,"Date"]]=forecast[0]
+        except:
+            pass
+    return PrediccionTrain
