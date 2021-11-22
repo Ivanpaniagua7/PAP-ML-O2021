@@ -22,6 +22,55 @@ from statsmodels.tsa.stattools import breakvar_heteroskedasticity_test
 plt.rcParams.update({'figure.figsize': (9, 7), 'figure.dpi': 120})
 
 #%% Ivan
+def PredictTrain(data, p, I, q, dias):
+    if p>=q:
+        rezagos=p+I
+    else:
+        rezagos=q+I
+    data=data[:-rezagos].reset_index()
+    PrediccionTrain=pd.DataFrame(columns=["Predicción"])
+    for i in range(rezagos,len(data)-1):
+        try:
+            model = SARIMAX(pd.DataFrame(data["Close"][:i]), order=(p,I,q), seasonal_order=(0,0,0,0))
+            model_fit = model.fit()
+            diaspred=i+dias
+            forecast = list(model_fit.predict(start=diaspred,end=diaspred,dynamic=True))
+            PrediccionTrain.loc[data.loc[i+dias-1,"Date"]]=forecast[0] #-1 ya que aquí toma 1 dato más por el 0 del índice,
+            #en predicción a 1 día, si i es 9, toma el decimo dato, es decir la fecha de la predicción.
+        except:
+            pass         
+    return PrediccionTrain
+
+def PredictTest(train, test, p, I, q, dias): #Este es con predicciones a diferentes dias
+    if p>=q:
+        rezagos=p+I
+    else:
+        rezagos=q+I
+    data=train[-rezagos:].append(test)
+    data=data.reset_index()
+    PrediccionTrain=pd.DataFrame(columns=["Predicción"])
+    for i in range(rezagos, len(data)):
+        try:
+            model = SARIMAX(pd.DataFrame(data["Close"][:i]), order=(p,I,q), seasonal_order=(0,0,0,0))
+            model_fit = model.fit()
+            diaspred=i+dias
+            forecast = list(model_fit.predict(start=diaspred,end=diaspred,dynamic=True))
+            PrediccionTrain.loc[data.loc[i+dias-1,"Date"]]=forecast[0] #-1 ya que aquí toma 1 dato más por el 0 del índice,
+            #en predicción a 1 día, si i es 9, toma el decimo dato, es decir la fecha del de la predicción.
+        except:
+            pass         
+    return PrediccionTrain
+
+def MedidasDesempeño(PredTrain, btctrain, PredTest, btctest):
+    MergeTrain=pd.merge(PredTrain,btctrain, left_index=True, right_index=True)
+    MergeTest=pd.merge(PredTest,btctest, left_index=True, right_index=True)
+    slope, intercept, r_value, p_value, std_err = stats.linregress(MergeTrain["Predicción"],MergeTrain["Close"])
+    r2train=r_value**2
+    slope, intercept, r_value, p_value, std_err = stats.linregress(MergeTest["Predicción"],MergeTest["Close"])
+    r2test=r_value**2
+    MSETrain=mse(MergeTrain["Predicción"],MergeTrain["Close"])
+    MSETest=mse(MergeTest["Predicción"],MergeTest["Close"])
+    return r2train, MSETrain, r2test, MSETest
 
 
 #%% Edzna
