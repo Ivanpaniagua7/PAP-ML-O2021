@@ -8,24 +8,19 @@
 # -- repository: YOUR REPOSITORY URL                                                                     -- #
 # -- --------------------------------------------------------------------------------------------------- -- #
 """
-import numpy as np
-import pandas as pd
-import yfinance as yf
-import datetime
-from scipy import stats
-import statsmodels.api as sm
+import seaborn as sns
 import matplotlib.pyplot as plt
-from statsmodels.tsa.stattools import adfuller
-from statsmodels.tsa.statespace.sarimax import SARIMAX
-from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-from statsmodels.tools.eval_measures import mse
-#from statsmodels.tsa.stattools import breakvar_heteroskedasticity_test
-plt.rcParams.update({'figure.figsize': (9, 7), 'figure.dpi': 120})
 
 #%% Ivan
 
 
 #%% Edzna
+
+def caja_bigotes(serie):
+    plt.figure(figsize=(5, 2))
+    sns.boxplot(serie)
+    plt.show()
+
 
 def grafica_forecast(data, btc, model_fit):
     test = data["Close"].reset_index()

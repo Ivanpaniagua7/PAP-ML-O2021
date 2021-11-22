@@ -7,25 +7,16 @@
 # -- repository: YOUR REPOSITORY URL                                                                     -- #
 # -- --------------------------------------------------------------------------------------------------- -- #
 """
+# Importar otros archivos
 import data as dt
 import functions as fn
 import visualizations as vs
 
-
+# Importar librerias
 import warnings
-import numpy as np
 import pandas as pd
-import yfinance as yf
-import datetime
-from scipy import stats
-import statsmodels.api as sm
 import matplotlib.pyplot as plt
-from statsmodels.tsa.stattools import adfuller
-from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-from statsmodels.tools.eval_measures import mse
-
-# from statsmodels.tsa.stattools import breakvar_heteroskedasticity_test
 plt.rcParams.update({'figure.figsize': (9, 7), 'figure.dpi': 120})
 warnings.filterwarnings("ignore")
 
@@ -83,11 +74,27 @@ modelo1.plot_diagnostics()
 plt.show()
 
 # Paso 4: Pronóstico
-forecast1 = vs.grafica_forecast(Cierres, btc, modelo1)
-forecast1
-
-
-# Dividir la serie en train y test
 btc = btc["Close"]
 btc_train = btc.loc["2019-09-26":"2021-09-27"].shift()
 btc_train = btc_train.dropna()
+
+test = Cierres["Close"].reset_index()
+testini = test[test['Date'] == "2021-09-27"].index.values[0]
+testfin = test[test['Date'] == "2021-10-28"].index.values[0]
+test = test["Close"].loc[testini:testfin]
+
+forecast_serie = modelo1.predict(
+       start=testini,
+       end=testfin,
+       dynamic=True)
+forecast_grafica = vs.grafica_forecast(Cierres, btc, modelo1)
+
+PrediccionesTry = fn.PredictTrain(btc_train, 9, 8, 1, 8)
+# Predicciones y reales de train
+PredYReales = pd.merge(PrediccionesTry, btc_train, left_index=True, right_index=True)
+
+# Medidas train
+medidas_train = fn.medidas_train(PredYReales)
+
+# Medidas test
+medidas_test = fn.medidas_test(test, forecast_serie)

@@ -18,7 +18,7 @@ from statsmodels.tsa.stattools import adfuller
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from statsmodels.tools.eval_measures import mse
-#from statsmodels.tsa.stattools import breakvar_heteroskedasticity_test
+from statsmodels.tsa.stattools import breakvar_heteroskedasticity_test
 plt.rcParams.update({'figure.figsize': (9, 7), 'figure.dpi': 120})
 
 #%% Ivan
@@ -59,6 +59,16 @@ def conteo_calculos(bitcoin):
     return df
 
 
+def estacionariedad(serie):
+    plt.figure(figsize=(5, 2))
+    serie.plot()
+    plt.show()
+    plot_acf(serie, lags=50)
+    plt.show()
+    plot_pacf(serie, lags=50)
+    plt.show()
+
+
 def pruebaDickeyFuller(btc):
     dftest = adfuller(btc)
     dfoutput = pd.Series(dftest[0:4], index=['Test Statistic', 'p-value', '#Lags Used', 'Number of Observations Used'])
@@ -75,6 +85,36 @@ def model_fit(btc, p, d, q):
     return modelo_fit
 
 
+# PRUEBAS A LOS RESIDUALES
+def prueba_normalidad(residuales):
+    # Normalidad de los residuos Shapiro-Wilk test
+    # ==============================================================================
+    shapiro_test = stats.shapiro(residuales)
+    print("statistic", shapiro_test[0])
+    print("P-value=", shapiro_test[1])
+    if shapiro_test[1] < 0.05:
+        print("Los residuales se distrubuyen de forma normal.")
+    else:
+        print("Los residuales NO se distrubuyen de forma normal.")
+
+
+def ljung_box(residuales):
+    prueba = sm.stats.acorr_ljungbox(residuales, lags=[50], return_df=True)
+
+    return prueba
+
+
+def heterocedasticidad(residuales):
+    prueba = breakvar_heteroskedasticity_test(residuales)
+
+    return prueba
+
+
+
+
+
+
+
 def PredictTrain(data, rezagos, p, I, q):
     data = data.reset_index()
     PrediccionTrain = pd.DataFrame(columns=["Predicción"])
@@ -88,3 +128,19 @@ def PredictTrain(data, rezagos, p, I, q):
         except:
             pass
     return PrediccionTrain
+
+
+def medidas_train(PredYReales):
+    slope, intercept, r_value, p_value, std_err = stats.linregress(PredYReales["Predicción"],
+                                                                   PredYReales["Close"])
+    r2train = r_value ** 2
+    MSETrain = mse(PredYReales["Predicción"], PredYReales["Close"])
+
+    return r2train, MSETrain
+
+
+def medidas_test(test, forecast):
+    slope, intercept, r_value, p_value, std_err = stats.linregress(test.squeeze(),forecast)
+    r2test=r_value**2
+    MSETest=mse(test.squeeze(),forecast)
+    return r2test, MSETest
