@@ -159,7 +159,19 @@ def heterocedasticidad(residuales):
     return prueba
 
 
+def Rsquared(data, modelo):
+    test = data["Close"].reset_index()
+    testini = test[test['Date'] == "2021-09-27"].index.values[0]
+    testfin = test[test['Date'] == "2021-10-28"].index.values[0]
+    test = test["Close"].loc[testini:testfin]
 
+    forecast = modelo.predict(start=testini, end=testfin, dynamic=True)
+
+    num = sum((test - forecast) ** 2)
+    den = sum((test - test.mean()) ** 2)
+    Rsq = 1 - (num / den)
+
+    return Rsq
 
 
 
