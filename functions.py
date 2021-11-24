@@ -72,6 +72,21 @@ def MedidasDesempeño(PredTrain, btctrain, PredTest, btctest):
     MSETest=mse(MergeTest["Predicción"],MergeTest["Close"])
     return r2train, MSETrain, r2test, MSETest
 
+def Desempeños(Desmp1, Desmp2, Desmp3, Desmp4, dias):
+    
+    ModelsResults=pd.DataFrame(columns=["R\u00b2 train","MSE train", "R\u00b2 test", "MSE test"])
+    ModelsResults.loc["Model 8,1,8"]=Desmp1
+    ModelsResults.loc["Model 10,1,10"]=Desmp2
+    ModelsResults.loc["Model 12,1,7"]=Desmp3
+    ModelsResults.loc["Model 12,1,12"]=Desmp4
+    
+    if dias>1:
+        print("\033[1m Predicciones a %s días"%dias)
+    else:
+        print("\033[1m Predicciones a %s día"%dias)
+    
+    return ModelsResults
+
 
 #%% Edzna
 
