@@ -7,10 +7,7 @@
 # -- repository: YOUR REPOSITORY URL                                                                     -- #
 # -- --------------------------------------------------------------------------------------------------- -- #
 """
-import numpy as np
 import pandas as pd
-import yfinance as yf
-import datetime
 from scipy import stats
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
@@ -174,37 +171,16 @@ def heterocedasticidad(residuales):
     return prueba
 
 
+def Rsquared(data, modelo):
+    test = data["Close"].reset_index()
+    testini = test[test['Date'] == "2021-09-27"].index.values[0]
+    testfin = test[test['Date'] == "2021-10-28"].index.values[0]
+    test = test["Close"].loc[testini:testfin]
 
+    forecast = modelo.predict(start=testini, end=testfin, dynamic=True)
 
+    num = sum((test - forecast) ** 2)
+    den = sum((test - test.mean()) ** 2)
+    Rsq = 1 - (num / den)
 
-
-
-def PredictTrain(data, rezagos, p, I, q):
-    data = data.reset_index()
-    PrediccionTrain = pd.DataFrame(columns=["Predicción"])
-    for i in range(rezagos, len(data)-1):
-        try:
-            model = SARIMAX(pd.DataFrame(data["Close"][:i]), order=(p,I,q), seasonal_order=(0,0,0,0))
-            model_fit = model.fit()
-            nextday=i+1
-            forecast = list(model_fit.predict(start=nextday,end=nextday,dynamic=True))
-            PrediccionTrain.loc[data.loc[i,"Date"]]=forecast[0]
-        except:
-            pass
-    return PrediccionTrain
-
-
-def medidas_train(PredYReales):
-    slope, intercept, r_value, p_value, std_err = stats.linregress(PredYReales["Predicción"],
-                                                                   PredYReales["Close"])
-    r2train = r_value ** 2
-    MSETrain = mse(PredYReales["Predicción"], PredYReales["Close"])
-
-    return r2train, MSETrain
-
-
-def medidas_test(test, forecast):
-    slope, intercept, r_value, p_value, std_err = stats.linregress(test.squeeze(),forecast)
-    r2test=r_value**2
-    MSETest=mse(test.squeeze(),forecast)
-    return r2test, MSETest
+    return Rsq
