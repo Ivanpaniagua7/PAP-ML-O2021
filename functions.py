@@ -213,7 +213,8 @@ def cerrar(fechacierre, Comision, y, i, GoP):
     
     df_operaciones.loc[y, "Fecha_cierre"]=fechacierre
     abiertas.drop([y], inplace=True)
-    
+
+
 def Backtest(Intradia, PreciosE, CashInicial, PorcTP, PorcSL, inidate, Fechas):
     global CashDisponible
     CashDisponible=CashInicial
