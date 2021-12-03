@@ -170,9 +170,114 @@ def dataframes(CashInicial, inidate):
                                              "Cerrada", "G/P", "G/P $", "Fecha_cierre"])
     abiertas=pd.DataFrame(columns=["Titulos_totales","Titulos_nuevos","Compra/venta","precio",\
                                          "Comisión", "TP", "SL"])
-    df_rentabilidad=pd.DataFrame(columns=["Valor Portafolio", "Rend Sem", "Rend Acum"])
+    df_rentabilidad=pd.DataFrame(columns=["Valor Portafolio", "Rend Men", "Rend Acum"])
     df_rentabilidad.loc[pd.to_datetime(inidate).strftime("%d/%m/%Y %H:%M")]=CashInicial,0,0
     return df_operaciones, abiertas, df_rentabilidad
+
+def FechasMen(precios, inidate, enddate):
+    inid=pd.to_datetime(inidate)
+    Fechas=[]
+    dayweek=inid
+    dayweek=dayweek+relativedelta(months=1)
+    while dayweek<pd.to_datetime(enddate):
+        Fechas.append(dayweek)
+        dayweek=dayweek+relativedelta(months=1)
+    Fechas=[Fechas[i].strftime("%d/%m/%Y %H:%M") for i in range(len(Fechas))]
+    return Fechas
+
+def cerrar(fechacierre, Comision, y, i, GoP):
+    global CashDisponible
+    #global df_operaciones
+    df_operaciones.loc[y, "Cerrada"]="Si"
+    #Com_Cierre=abs(df_operaciones.loc[y, "Titulos_nuevos"])*openp[i]*Comision
+    if GoP=="G":
+        df_operaciones.loc[y, "G/P"]="Ganadora"
+        Monto_Cierre=df_operaciones.loc[y, "Titulos_nuevos"]*df_operaciones.loc[y, "TP"]
+        Com_Cierre=abs(Monto_Cierre)*Comision
+        df_operaciones.loc[y, "G/P $"]=abs(df_operaciones.loc[y, "TP"]-df_operaciones.loc[y, "precio"])*\
+            abs(df_operaciones.loc[y, "Titulos_nuevos"])-Com_Cierre-df_operaciones.loc[y, "Comisión"]
+        CashDisponible=CashDisponible+Monto_Cierre-Com_Cierre
+    elif GoP=="P":
+        df_operaciones.loc[y, "G/P"]="Perdedora"
+        Monto_Cierre=df_operaciones.loc[y, "Titulos_nuevos"]*df_operaciones.loc[y, "SL"]
+        Com_Cierre=abs(Monto_Cierre)*Comision
+        df_operaciones.loc[y, "G/P $"]=-abs(df_operaciones.loc[y, "SL"]-df_operaciones.loc[y, "precio"])*\
+            abs(df_operaciones.loc[y, "Titulos_nuevos"])-Com_Cierre-df_operaciones.loc[y, "Comisión"]
+        CashDisponible=CashDisponible+Monto_Cierre-Com_Cierre
+    else:
+        df_operaciones.loc[y, "G/P"]="Indefinido"
+        Monto_Cierre=df_operaciones.loc[y, "Titulos_nuevos"]*df_operaciones.loc[y, "precio"]
+        Com_Cierre=abs(Monto_Cierre)*Comision
+        df_operaciones.loc[y, "G/P $"]=-Com_Cierre-df_operaciones.loc[y, "Comisión"]
+        CashDisponible=CashDisponible-Com_Cierre-df_operaciones.loc[y, "Comisión"]
+    
+    df_operaciones.loc[y, "Fecha_cierre"]=fechacierre
+    abiertas.drop([y], inplace=True)
+    
+def Backtest(Intradia, PreciosE, CashInicial, PorcTP, PorcSL, inidate, Fechas):
+    global CashDisponible
+    CashDisponible=CashInicial
+    time=Intradia["time"]
+    closep=Intradia["close"]
+    tit_tot=0
+    Comision=0.00125
+    Comis_acum=0
+    
+    global df_operaciones, abiertas, df_rentabilidad
+    df_operaciones, abiertas, df_rentabilidad=dataframes(CashInicial, inidate)
+    Lista=list(PreciosE["date"])
+    for i in range(1,len(Intradia)):
+        if Intradia["time"][i-1] in Lista:
+            Tendencia=PreciosE.loc[PreciosE["date"][PreciosE["date"] == Intradia["time"][i-1]].index[0],"C/D"]
+            if Tendencia!="Ninguno":
+                if Tendencia=="Decreciente":
+                    Volumen=0.3
+                else:
+                    Volumen=0.15
+            #if PreciosE.loc[PreciosE["date"][PreciosE["date"] == Intradia["time"][i-1]].index[0],"C/D"]!="Ninguno":
+                tit_operados=CashDisponible*Volumen/closep[i]
+                tit_tot=tit_tot+tit_operados
+                Comis_oper=CashDisponible*Volumen*Comision
+                Comis_acum=Comis_acum+Comis_oper
+                TP=closep[i]*(1+PorcTP)
+                SL=closep[i]*(1-PorcSL)
+                CashDisponible=CashDisponible*0.8-Comis_oper
+                #df_operaciones.loc[time[i]]=tit_tot, tit_operados, "compra", closep[i],\
+                df_operaciones.loc[time[i]]=tit_tot, tit_operados, Tendencia, closep[i],\
+                    Comis_oper, Comis_acum, TP, SL, CashDisponible, "No","","", ""
+                #abiertas.loc[time[i]]=tit_tot, tit_operados, "compra", closep[i],\
+                abiertas.loc[time[i]]=tit_tot, tit_operados, Tendencia, closep[i],\
+                    Comis_oper, TP, SL
+                #print(PreciosE.loc[PreciosE["date"][PreciosE["date"] == Intradia["time"][i-1]].index[0],"date"],
+                 #    PreciosE.loc[PreciosE["date"][PreciosE["date"] == Intradia["time"][i-1]].index[0],"C/D"])
+        if len(abiertas)>0:
+            for y in abiertas.index:
+                #if abiertas["Compra/venta"][y]=="compra":
+                if closep[i]>=abiertas["TP"][y]:
+                    cerrar(time[i], Comision, y, i, "G")
+                elif closep[i]<=abiertas["SL"][y]:
+                    cerrar(time[i], Comision, y, i, "P")
+
+        if time[i-1] in Fechas:
+            ValorPort=CashDisponible
+            if len(abiertas)>0:
+                for x in abiertas.index:
+                    Mont_Cierre=abiertas.loc[x, "Titulos_nuevos"]*closep[i]
+                    Com_Cierr=abs(Mont_Cierre)*Comision
+                    ValorPort=ValorPort+Mont_Cierre-Com_Cierr
+            df_rentabilidad.loc[time[i-1], "Valor Portafolio"]=ValorPort
+
+    for f in range(1,len(df_rentabilidad)):
+        df_rentabilidad.iloc[f, 1]=df_rentabilidad.iloc[f, 0]/df_rentabilidad.iloc[f-1, 0]-1
+        df_rentabilidad.iloc[f, 2]=df_rentabilidad.iloc[f, 0]/df_rentabilidad.iloc[0,0]-1
+
+    if len(abiertas)>0:
+        #print("Falta operación por cerrar")
+        CashDisponible=df_rentabilidad["Valor Portafolio"][-1]
+        
+    return df_operaciones,abiertas, df_rentabilidad, CashDisponible
+
+
 
 
 
