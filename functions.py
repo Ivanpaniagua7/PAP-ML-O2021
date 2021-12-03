@@ -8,9 +8,11 @@
 # -- --------------------------------------------------------------------------------------------------- -- #
 """
 import pandas as pd
+import numpy as np
 from scipy import stats
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
+from dateutil.relativedelta import relativedelta
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
@@ -19,6 +21,10 @@ from statsmodels.tsa.stattools import breakvar_heteroskedasticity_test
 plt.rcParams.update({'figure.figsize': (9, 7), 'figure.dpi': 120})
 
 #%% Ivan
+
+def is_nan(x):
+    return (x != x)
+
 def PredictTrain(data, p, I, q, dias):
     if p>=q:
         rezagos=p+I
@@ -83,6 +89,91 @@ def Desempeños(Desmp1, Desmp2, Desmp3, Desmp4, dias):
         print("\033[1m Predicciones a %s día"%dias)
     
     return ModelsResults
+
+def Estrategia(data, p, I, q, dias):
+    if p>=q:
+        rezagos=p+I
+    else:
+        rezagos=q+I
+    data=data.reset_index()
+    diastexto=["Actual", "1 día"]
+    for i in range(2,dias+1):
+        diastexto.append("%s días"%i)
+    Predicciones=pd.DataFrame(columns=diastexto)
+    for i in range(rezagos, len(data)):
+        try:
+            model = SARIMAX(pd.DataFrame(data["Close"][:i]), order=(p,I,q), seasonal_order=(0,0,0,0))
+            model_fit = model.fit()
+            diaspred=i+dias
+            forecast = list(model_fit.predict(start=i+1,end=diaspred,dynamic=True))
+            Predicciones.loc[data.loc[i-1,"Date"]]=[data.loc[i-1,"Close"]]+forecast #-1 ya que aquí toma 1 dato más por el 0 del índice,
+            #en predicción a 1 día, si i es 9, toma el decimo dato, es decir la fecha del de la predicción. Y estamos
+            #partiendo de que la fecha que se pone es de cuando se hacen las predicciones a esos numero de días
+        except:
+            pass
+    return Predicciones
+
+def CrecienteDecreciente(Predicciones):
+    CrecODec=Predicciones.copy()
+    CrecODec["C/D"]="NA"
+    CrecODec["Real 1 dia"]=CrecODec["Actual"].shift(-1)
+    CrecODec["% 1 dia"]=CrecODec["Real 1 dia"]/CrecODec["Actual"]-1
+    CrecODec["Real 2 dia"]=CrecODec["Actual"].shift(-2)
+    CrecODec["% 2 dia"]=CrecODec["Real 2 dia"]/CrecODec["Actual"]-1
+    CrecODec["Real 3 dia"]=CrecODec["Actual"].shift(-3)
+    CrecODec["% 3 dia"]=CrecODec["Real 3 dia"]/CrecODec["Actual"]-1
+    CrecODec["Real 4 dia"]=CrecODec["Actual"].shift(-4)
+    CrecODec["% 4 dia"]=CrecODec["Real 4 dia"]/CrecODec["Actual"]-1
+    CrecODec=CrecODec.dropna()
+    
+    COD=CrecODec.iloc
+    for i in range(len(CrecODec)):
+        if COD[i,1] > COD[i,0] and COD[i,2] > COD[i,1] and COD[i,3] > COD[i,2] and COD[i,4] > COD[i,3]:
+            COD[i,5]="Creciente"
+        elif COD[i,1] < COD[i,0] and COD[i,2] < COD[i,1] and COD[i,3] < COD[i,2] and COD[i,4] < COD[i,3]:
+            COD[i,5]="Decreciente"
+        else:
+            COD[i,5]="Ninguno"
+    return CrecODec
+
+def DataframesCyD(PredConReales):
+    Creciente=PredConReales[PredConReales["C/D"]=="Creciente"]
+    Decreciente=PredConReales[PredConReales["C/D"]=="Decreciente"]
+    return Creciente, Decreciente
+
+def PromediosCambios(Creciente, Decreciente):
+    Promedios=pd.DataFrame(columns=["% 1 dia","% 2 dia","% 3 dia","% 4 dia"])
+    for i in range(1,5):
+        c=np.mean(Creciente["% "+str(i)+" dia"])
+        d=np.mean(Decreciente["% "+str(i)+" dia"])
+        Promedios.loc["Creciente","% "+str(i)+" dia"]=c
+        Promedios.loc["Decreciente","% "+str(i)+" dia"]=d
+    return Promedios
+
+def PreciosCoD(PreciosEstrategia):
+    PreCoD=PreciosEstrategia.copy()
+    PreCoD["C/D"]="NA"
+    PreCoD["date"]=[PreCoD.index[i].strftime("%d/%m/%Y %H:%M") for i in range(len(PreCoD))]
+    Pr=PreCoD.iloc
+    for i in range(len(PreCoD)):
+        if Pr[i,1] > Pr[i,0] and Pr[i,2] > Pr[i,1] and Pr[i,3] > Pr[i,2] and Pr[i,4] > Pr[i,3]:
+            Pr[i,5]="Creciente"
+        elif Pr[i,1] < Pr[i,0] and Pr[i,2] < Pr[i,1] and Pr[i,3] < Pr[i,2] and Pr[i,4] < Pr[i,3]:
+            Pr[i,5]="Decreciente"
+        else:
+            Pr[i,5]="Ninguno"
+    return PreCoD
+
+def dataframes(CashInicial, inidate):
+    df_operaciones=pd.DataFrame(columns=["Titulos_totales","Titulos_nuevos","Compra/venta","precio",\
+                                         "Comisión","Comision_acum", "TP", "SL", "Cash_Disp",\
+                                             "Cerrada", "G/P", "G/P $", "Fecha_cierre"])
+    abiertas=pd.DataFrame(columns=["Titulos_totales","Titulos_nuevos","Compra/venta","precio",\
+                                         "Comisión", "TP", "SL"])
+    df_rentabilidad=pd.DataFrame(columns=["Valor Portafolio", "Rend Sem", "Rend Acum"])
+    df_rentabilidad.loc[pd.to_datetime(inidate).strftime("%d/%m/%Y %H:%M")]=CashInicial,0,0
+    return df_operaciones, abiertas, df_rentabilidad
+
 
 
 #%% Edzna

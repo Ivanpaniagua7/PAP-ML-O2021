@@ -9,6 +9,8 @@
 # -- --------------------------------------------------------------------------------------------------- -- #
 """
 import pandas_datareader.data as web
+import pandas as pd
+
 
 #%% Ivan
 
@@ -23,5 +25,27 @@ def get_adj_closes(tickers, start_date=None, end_date=None):
     closes.sort_index(inplace=True)
 
     return closes
+
+def DatosIntradia():
+    
+    def is_nan(x):
+        return (x != x)
+
+    Datos=pd.read_csv("BTCUSDT.csv")
+    for i in range(len(Datos)):
+        if is_nan(Datos.iloc[i,3]):
+            temp=Datos.iloc[:i,2:4]
+            temp.columns = Datos.columns[:2]
+            Datos=Datos.drop(Datos.columns[2:4],axis=1)
+            Datos=Datos.append(temp).reset_index(drop=True)
+            break
+    return Datos
+
+
+
+
+
+#%%
+
 
 
