@@ -234,7 +234,7 @@ def Backtest(Intradia, PreciosE, CashInicial, PorcTP, PorcSL, inidate, Fechas):
                 if Tendencia=="Decreciente":
                     Volumen=0.3
                 else:
-                    Volumen=0.15
+                    Volumen=0.03
             #if PreciosE.loc[PreciosE["date"][PreciosE["date"] == Intradia["time"][i-1]].index[0],"C/D"]!="Ninguno":
                 tit_operados=CashDisponible*Volumen/closep[i]
                 tit_tot=tit_tot+tit_operados
@@ -242,7 +242,7 @@ def Backtest(Intradia, PreciosE, CashInicial, PorcTP, PorcSL, inidate, Fechas):
                 Comis_acum=Comis_acum+Comis_oper
                 TP=closep[i]*(1+PorcTP)
                 SL=closep[i]*(1-PorcSL)
-                CashDisponible=CashDisponible*0.8-Comis_oper
+                CashDisponible=CashDisponible*(1-Volumen)-Comis_oper
                 #df_operaciones.loc[time[i]]=tit_tot, tit_operados, "compra", closep[i],\
                 df_operaciones.loc[time[i]]=tit_tot, tit_operados, Tendencia, closep[i],\
                     Comis_oper, Comis_acum, TP, SL, CashDisponible, "No","","", ""
